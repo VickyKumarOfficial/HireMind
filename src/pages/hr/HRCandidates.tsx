@@ -83,7 +83,7 @@ const HRCandidates = () => {
           </div>
           <Button>
             <Upload className="h-4 w-4 mr-2" />
-            Bulk Upload Resumes
+            Upload Resumes
           </Button>
         </div>
 
