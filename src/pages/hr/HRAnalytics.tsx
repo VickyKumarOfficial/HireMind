@@ -2,8 +2,10 @@ import HRLayout from "@/components/layouts/HRLayout";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, Users, Clock, Target, Briefcase, CheckCircle } from "lucide-react";
+import { useHRAuth } from "@/hooks/use-hr-auth";
 
 const HRAnalytics = () => {
+  useHRAuth();
   const stats = [
     { label: "Total Applicants", value: "347", change: "+12%", icon: Users },
     { label: "Avg. Time to Hire", value: "18 days", change: "-3 days", icon: Clock },

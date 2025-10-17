@@ -1,5 +1,5 @@
 import { LayoutDashboard, Briefcase, Users, Mail, BarChart3, LogOut, Brain } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -12,6 +12,7 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import { toast } from "sonner";
 
 const menuItems = [
   { title: "Dashboard", url: "/hr/dashboard", icon: LayoutDashboard },
@@ -22,6 +23,13 @@ const menuItems = [
 ];
 
 export function HRSidebar() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("hrAuth");
+    toast.success("Logged out successfully");
+    navigate("/hr/login");
+  };
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-4">
@@ -62,11 +70,9 @@ export function HRSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <NavLink to="/" className="hover:bg-sidebar-accent/50">
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </NavLink>
+            <SidebarMenuButton onClick={handleLogout} className="hover:bg-sidebar-accent/50 cursor-pointer">
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

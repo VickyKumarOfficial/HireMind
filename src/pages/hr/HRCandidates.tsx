@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Upload, Mail, Star } from "lucide-react";
+import { useHRAuth } from "@/hooks/use-hr-auth";
 
 const HRCandidates = () => {
+  useHRAuth();
   const candidates = [
     {
       id: 1,

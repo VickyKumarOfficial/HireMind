@@ -4,8 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import HRLayout from "@/components/layouts/HRLayout";
 import { Briefcase, Users, TrendingUp, Clock, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useHRAuth } from "@/hooks/use-hr-auth";
 
 const HRDashboard = () => {
+  // Authentication check
+  useHRAuth();
   const stats = [
     { label: "Active Jobs", value: "12", icon: Briefcase, color: "text-primary" },
     { label: "Total Applicants", value: "347", icon: Users, color: "text-secondary" },

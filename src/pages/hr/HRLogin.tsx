@@ -11,15 +11,66 @@ const HRLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [companyId, setCompanyId] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
+  const [departmentCode, setDepartmentCode] = useState("");
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      toast.success("Login successful!");
-      navigate("/hr/dashboard");
-    } else {
-      toast.error("Please fill in all fields");
+    
+    // Validate all fields are filled
+    if (!email || !password || !companyId || !employeeId || !departmentCode) {
+      toast.error("Please fill in all required fields");
+      return;
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    // Validate Company ID format (e.g., COMP-XXXX)
+    const companyIdRegex = /^[A-Z]{2,4}-\d{4,6}$/;
+    if (!companyIdRegex.test(companyId)) {
+      toast.error("Invalid Company ID format. Expected format: COMP-XXXX");
+      return;
+    }
+
+    // Validate Employee ID format (e.g., EMP-XXXX or numeric)
+    const employeeIdRegex = /^(EMP-\d{4,6}|\d{4,8})$/;
+    if (!employeeIdRegex.test(employeeId)) {
+      toast.error("Invalid Employee ID format. Expected format: EMP-XXXX or numeric ID");
+      return;
+    }
+
+    // Validate Department Code format (e.g., HR-XXX)
+    const deptCodeRegex = /^[A-Z]{2,4}-\d{2,4}$/;
+    if (!deptCodeRegex.test(departmentCode)) {
+      toast.error("Invalid Department Code format. Expected format: HR-XXX");
+      return;
+    }
+
+    // Additional validation: Check if department code starts with HR
+    if (!departmentCode.startsWith("HR-")) {
+      toast.error("Access denied. Only HR department personnel are allowed");
+      return;
+    }
+
+    // If all validations pass
+    toast.success("Login successful! Welcome to HR Portal");
+    
+    // Store HR credentials (in a real app, this would be validated against a backend)
+    sessionStorage.setItem("hrAuth", JSON.stringify({
+      email,
+      companyId,
+      employeeId,
+      departmentCode,
+      loginTime: new Date().toISOString()
+    }));
+    
+    navigate("/hr/dashboard");
   };
 
   return (
@@ -37,27 +88,76 @@ const HRLogin = () => {
         <Card className="p-6">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Corporate Email Address *</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="hr@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Password *</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
-            <Button type="submit" className="w-full">
-              Sign In
+
+            <div className="border-t pt-4 mt-4">
+              <p className="text-sm font-medium text-muted-foreground mb-3">
+                Company Verification Details
+              </p>
+              
+              <div className="space-y-2">
+                <Label htmlFor="companyId">Company ID *</Label>
+                <Input
+                  id="companyId"
+                  type="text"
+                  placeholder="e.g., COMP-1234"
+                  value={companyId}
+                  onChange={(e) => setCompanyId(e.target.value.toUpperCase())}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Format: COMP-XXXX</p>
+              </div>
+
+              <div className="space-y-2 mt-3">
+                <Label htmlFor="employeeId">HR Employee ID *</Label>
+                <Input
+                  id="employeeId"
+                  type="text"
+                  placeholder="e.g., EMP-5678"
+                  value={employeeId}
+                  onChange={(e) => setEmployeeId(e.target.value.toUpperCase())}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Format: EMP-XXXX or numeric</p>
+              </div>
+
+              <div className="space-y-2 mt-3">
+                <Label htmlFor="departmentCode">Department Authorization Code *</Label>
+                <Input
+                  id="departmentCode"
+                  type="text"
+                  placeholder="e.g., HR-101"
+                  value={departmentCode}
+                  onChange={(e) => setDepartmentCode(e.target.value.toUpperCase())}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Format: HR-XXX (HR personnel only)</p>
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full mt-6">
+              Sign In Securely
             </Button>
           </form>
 
