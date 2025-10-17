@@ -1,6 +1,7 @@
 import { Brain, Home, Briefcase, User, FileText, LogOut } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import Footer from "@/components/Footer";
 
 interface CandidateLayoutProps {
   children: React.ReactNode;
@@ -8,7 +9,7 @@ interface CandidateLayoutProps {
 
 const CandidateLayout = ({ children }: CandidateLayoutProps) => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Top Navigation */}
       <nav className="border-b bg-card sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -64,9 +65,12 @@ const CandidateLayout = ({ children }: CandidateLayoutProps) => {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

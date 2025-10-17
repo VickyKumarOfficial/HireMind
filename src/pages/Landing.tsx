@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Brain, Users, FileText, BarChart3, Sparkles, Target } from "lucide-react";
 import { Link } from "react-router-dom";
+import Footer from "@/components/Footer";
 
 const Landing = () => {
   const features = [
@@ -126,11 +127,7 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-8 px-4">
-        <div className="max-w-7xl mx-auto text-center text-muted-foreground">
-          <p>&copy; 2025 HireMind. All rights reserved.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
