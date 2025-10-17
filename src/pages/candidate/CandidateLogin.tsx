@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const CandidateLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
@@ -93,6 +94,16 @@ const CandidateLogin = () => {
                     placeholder="John Doe"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Phone Number</Label>
+                  <Input
+                    id="name"
+                    type="phone"
+                    placeholder="98******21"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
