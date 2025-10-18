@@ -205,6 +205,10 @@ export async function extractResumeText(file: File): Promise<string> {
 }
 export async function extractCandidateProfile(resumeText: string): Promise<CandidateProfile> {
   try {
+    console.log('📄 Starting candidate profile extraction...');
+    console.log('📊 Resume text length:', resumeText.length);
+    console.log('🔑 GROQ API key configured:', Boolean(GROQ_API_KEY));
+    
     const prompt = `You are an expert resume parser. Extract structured information from the following resume text and return it in JSON format.
 
 Resume Content:
@@ -270,6 +274,8 @@ Rules:
 - Calculate total_years based on work experience
 - Include all relevant skills, technologies, and keywords`;
 
+    console.log('🚀 Sending request to GROQ API...');
+    
     const response = await groqClient.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
@@ -277,23 +283,43 @@ Rules:
       max_tokens: 3000,
     });
 
+    console.log('✅ Received response from GROQ API');
+    
     const content = response.choices[0]?.message?.content;
     if (!content) {
+      console.error('❌ No content in GROQ response');
       throw new Error("No response from GROQ API");
     }
 
+    console.log('📝 Raw GROQ response:', content.substring(0, 500) + '...');
+
     // Clean the response and parse JSON
     const cleanedContent = content.replace(/```json|```/g, '').trim();
-    const candidateProfile = JSON.parse(cleanedContent) as CandidateProfile;
+    console.log('🧹 Cleaned content:', cleanedContent.substring(0, 500) + '...');
     
-    return candidateProfile;
+    try {
+      const candidateProfile = JSON.parse(cleanedContent) as CandidateProfile;
+      console.log('✅ Successfully parsed candidate profile:', candidateProfile.personal_info?.name);
+      return candidateProfile;
+    } catch (parseError) {
+      console.error('❌ JSON parsing failed:', parseError);
+      console.error('❌ Content that failed to parse:', cleanedContent);
+      throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
+    
   } catch (error) {
-    console.error("Error extracting candidate profile:", error);
+    console.error("❌ Error extracting candidate profile:", error);
     
-    // Return a fallback structure if parsing fails
+    // Only return fallback if it's a non-critical error
+    if (error instanceof Error && error.message.includes('Failed to parse JSON')) {
+      throw error; // Re-throw parsing errors so user knows something went wrong
+    }
+    
+    // Return a fallback structure for other errors (network, API issues, etc.)
+    console.log('🔄 Returning fallback candidate profile structure');
     return {
       personal_info: {
-        name: "Unable to extract",
+        name: "Processing failed - please try again",
         email: "",
         phone: "",
         location: ""
@@ -311,7 +337,7 @@ Rules:
       education: [],
       projects: [],
       certifications: [],
-      summary: "Unable to extract summary from resume",
+      summary: "Unable to extract summary from resume - please try again",
       keywords: []
     };
   }

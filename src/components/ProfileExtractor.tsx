@@ -30,11 +30,14 @@ import {
   extractJobRequirements,
   matchCandidateToJob,
   extractResumeText,
+  isGroqConfigured,
+  checkGroqConnection,
   type CandidateProfile,
   type JobRequirements,
   type MatchResult
 } from '@/lib/groq';
 import { isFileTypeSupported, getFileTypeDescription } from '@/lib/textExtraction';
+import { sampleJobDescriptions } from '@/lib/sampleJobs';
 
 const ProfileExtractor: React.FC = () => {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -45,6 +48,37 @@ const ProfileExtractor: React.FC = () => {
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState('upload');
+  const [debugInfo, setDebugInfo] = useState<{
+    groqConfigured: boolean;
+    groqConnected: boolean | null;
+  }>({
+    groqConfigured: false,
+    groqConnected: null
+  });
+
+  // Check GROQ configuration on component mount
+  React.useEffect(() => {
+    const checkConfiguration = async () => {
+      const configured = isGroqConfigured();
+      let connected = null;
+      
+      if (configured) {
+        try {
+          connected = await checkGroqConnection();
+        } catch (error) {
+          console.error('Error checking GROQ connection:', error);
+          connected = false;
+        }
+      }
+      
+      setDebugInfo({
+        groqConfigured: configured,
+        groqConnected: connected
+      });
+    };
+    
+    checkConfiguration();
+  }, []);
 
   const handleFileUpload = async (file: File) => {
     if (!isFileTypeSupported(file)) {
@@ -56,19 +90,71 @@ const ProfileExtractor: React.FC = () => {
     setResumeFile(file);
     
     try {
-      toast.info('Extracting text from resume...');
+      toast.info('📄 Extracting text from resume...');
       const text = await extractResumeText(file);
       setExtractedText(text);
       
-      toast.info('Parsing resume data...');
-      const profile = await extractCandidateProfile(text);
-      setCandidateProfile(profile);
+      // Validate extracted text
+      if (!text || text.trim().length < 50) {
+        throw new Error('Insufficient text extracted from resume. Please try a different file format.');
+      }
       
-      toast.success('Resume processed successfully!');
+      toast.info('🧠 Parsing resume data with AI...');
+      const profile = await extractCandidateProfile(text);
+      
+      // Validate profile extraction
+      if (!profile.personal_info?.name || profile.personal_info.name.includes('Unable to extract') || profile.personal_info.name.includes('Processing failed')) {
+        throw new Error('Failed to extract candidate information. Please ensure your resume has clear text and try again.');
+      }
+      
+      setCandidateProfile(profile);
+      toast.success('✅ Resume processed successfully!');
       setActiveTab('candidate');
     } catch (error) {
       console.error('Error processing resume:', error);
-      toast.error('Failed to process resume. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process resume. Please try again.';
+      toast.error(errorMessage);
+      
+      // Clear the candidate profile if processing failed
+      setCandidateProfile(null);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const testAIExtraction = async () => {
+    setIsProcessing(true);
+    try {
+      const sampleText = `
+JOHN DOE
+Software Engineer
+john.doe@email.com | (555) 123-4567
+
+PROFESSIONAL SUMMARY
+Experienced software engineer with 5 years of experience in React and Node.js.
+
+SKILLS
+React, JavaScript, Node.js, Python, AWS
+
+EXPERIENCE
+Senior Developer | TechCorp | 2021-Present
+- Led development team
+- Built scalable applications
+
+EDUCATION
+BS Computer Science | University | 2019
+`;
+      
+      toast.info('🧪 Testing AI extraction with sample text...');
+      const profile = await extractCandidateProfile(sampleText);
+      setCandidateProfile(profile);
+      setExtractedText(sampleText);
+      
+      toast.success('✅ AI extraction test completed!');
+      setActiveTab('candidate');
+    } catch (error) {
+      console.error('Test failed:', error);
+      toast.error('AI extraction test failed. Check console for details.');
     } finally {
       setIsProcessing(false);
     }
@@ -142,6 +228,33 @@ const ProfileExtractor: React.FC = () => {
         <p className="text-muted-foreground">
           Extract structured data from resumes and job descriptions, then find the perfect matches
         </p>
+        
+        {/* Debug Info */}
+        <div className="flex items-center justify-center gap-4 text-sm">
+          <div className="flex items-center gap-1">
+            {debugInfo.groqConfigured ? (
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            ) : (
+              <XCircle className="h-4 w-4 text-red-600" />
+            )}
+            <span>GROQ API {debugInfo.groqConfigured ? 'Configured' : 'Not Configured'}</span>
+          </div>
+          {debugInfo.groqConfigured && (
+            <div className="flex items-center gap-1">
+              {debugInfo.groqConnected === true ? (
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              ) : debugInfo.groqConnected === false ? (
+                <XCircle className="h-4 w-4 text-red-600" />
+              ) : (
+                <Clock className="h-4 w-4 text-yellow-600" />
+              )}
+              <span>
+                {debugInfo.groqConnected === true ? 'Connected' : 
+                 debugInfo.groqConnected === false ? 'Connection Failed' : 'Checking...'}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -196,6 +309,33 @@ const ProfileExtractor: React.FC = () => {
                 </div>
               )}
 
+              {debugInfo.groqConfigured && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium mb-2">🧪 Debug Tools</h4>
+                  <Button 
+                    onClick={testAIExtraction}
+                    disabled={isProcessing}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2 animate-spin" />
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-4 w-4 mr-2" />
+                        Test AI Extraction
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Test the AI extraction with sample resume text to verify GROQ API is working
+                  </p>
+                </div>
+              )}
+
               {extractedText && (
                 <div className="space-y-2">
                   <h4 className="font-medium">Extracted Text:</h4>
@@ -214,8 +354,32 @@ const ProfileExtractor: React.FC = () => {
             </h3>
             
             <div className="space-y-4">
+              <div className="flex gap-2 mb-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setJobDescription(sampleJobDescriptions.softwareEngineer)}
+                >
+                  Software Engineer
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setJobDescription(sampleJobDescriptions.dataScientist)}
+                >
+                  Data Scientist
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setJobDescription(sampleJobDescriptions.frontendDeveloper)}
+                >
+                  Frontend Developer
+                </Button>
+              </div>
+              
               <Textarea
-                placeholder="Paste the job description here..."
+                placeholder="Paste the job description here... or click one of the sample buttons above"
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
                 className="min-h-[200px]"
