@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { extractTextFromFile } from "./textExtraction";
 
-// GROQ API Configuration
+// GROQ API Configuration 
 // NOTE: In production, NEVER store API keys in frontend code
 // This should be handled by a backend API
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
