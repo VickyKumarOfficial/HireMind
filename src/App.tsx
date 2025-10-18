@@ -16,6 +16,7 @@ import CandidateJobs from "./pages/candidate/CandidateJobs";
 import CandidateApplications from "./pages/candidate/CandidateApplications";
 import CandidateProfile from "./pages/candidate/CandidateProfile";
 import AIResumeOptimizer from "./pages/candidate/AIResumeOptimizer";
+import ProfileMatching from "./pages/candidate/ProfileMatching";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/candidate/applications" element={<CandidateApplications />} />
           <Route path="/candidate/profile" element={<CandidateProfile />} />
           <Route path="/candidate/ai-resume-optimizer" element={<AIResumeOptimizer />} />
+          <Route path="/candidate/profile-matching" element={<ProfileMatching />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

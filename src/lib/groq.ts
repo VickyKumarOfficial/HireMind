@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { extractTextFromFile } from "./textExtraction";
 
 // GROQ API Configuration
 // NOTE: In production, NEVER store API keys in frontend code
@@ -19,6 +20,104 @@ export interface ResumeAnalysis {
   overall: string;
   strengths: string[];
   weaknesses: string[];
+}
+
+// New interfaces for structured data extraction
+export interface CandidateProfile {
+  personal_info: {
+    name: string;
+    email: string;
+    phone: string;
+    location: string;
+    linkedin?: string;
+    github?: string;
+    portfolio?: string;
+  };
+  skills: {
+    technical_skills: string[];
+    soft_skills: string[];
+    languages: string[];
+    tools_and_frameworks: string[];
+  };
+  experience: {
+    total_years: number;
+    work_history: Array<{
+      company: string;
+      position: string;
+      duration: string;
+      start_date: string;
+      end_date: string;
+      responsibilities: string[];
+      achievements: string[];
+    }>;
+  };
+  education: {
+    degree: string;
+    field_of_study: string;
+    institution: string;
+    graduation_year: string;
+    gpa?: string;
+    relevant_coursework?: string[];
+  }[];
+  projects: Array<{
+    name: string;
+    description: string;
+    technologies: string[];
+    achievements: string[];
+  }>;
+  certifications: Array<{
+    name: string;
+    issuer: string;
+    date: string;
+    expiry?: string;
+  }>;
+  summary: string;
+  keywords: string[];
+}
+
+export interface JobRequirements {
+  job_info: {
+    title: string;
+    company: string;
+    location: string;
+    job_type: string; // full-time, part-time, contract, remote
+    salary_range?: string;
+  };
+  requirements: {
+    required_skills: string[];
+    preferred_skills: string[];
+    min_experience: number;
+    max_experience?: number;
+    education_level: string;
+    certifications?: string[];
+  };
+  responsibilities: string[];
+  benefits: string[];
+  keywords: string[];
+  description_summary: string;
+}
+
+export interface MatchResult {
+  overall_score: number; // 0-100
+  skill_match: {
+    score: number;
+    matched_skills: string[];
+    missing_skills: string[];
+  };
+  experience_match: {
+    score: number;
+    candidate_years: number;
+    required_years: number;
+    meets_requirement: boolean;
+  };
+  education_match: {
+    score: number;
+    meets_requirement: boolean;
+  };
+  recommendations: {
+    for_candidate: string[];
+    for_recruiter: string[];
+  };
 }
 
 /**
@@ -97,51 +196,304 @@ Be specific, actionable, and constructive in your feedback.`;
  * @returns Promise<string> - Extracted text content
  */
 export async function extractResumeText(file: File): Promise<string> {
-  // For demo purposes, return sample text
-  // In production, you would use a PDF/Word parsing library like pdf-parse or mammoth
-  
-  return new Promise((resolve) => {
-    const reader = new FileReader();
+  try {
+    return await extractTextFromFile(file);
+  } catch (error) {
+    console.error("Error extracting resume text:", error);
+    throw error;
+  }
+}
+export async function extractCandidateProfile(resumeText: string): Promise<CandidateProfile> {
+  try {
+    const prompt = `You are an expert resume parser. Extract structured information from the following resume text and return it in JSON format.
+
+Resume Content:
+${resumeText}
+
+Please extract and return ONLY valid JSON in the following structure (no additional text or explanation):
+{
+  "personal_info": {
+    "name": "",
+    "email": "",
+    "phone": "",
+    "location": "",
+    "linkedin": "",
+    "github": "",
+    "portfolio": ""
+  },
+  "skills": {
+    "technical_skills": [],
+    "soft_skills": [],
+    "languages": [],
+    "tools_and_frameworks": []
+  },
+  "experience": {
+    "total_years": 0,
+    "work_history": [{
+      "company": "",
+      "position": "",
+      "duration": "",
+      "start_date": "",
+      "end_date": "",
+      "responsibilities": [],
+      "achievements": []
+    }]
+  },
+  "education": [{
+    "degree": "",
+    "field_of_study": "",
+    "institution": "",
+    "graduation_year": "",
+    "gpa": "",
+    "relevant_coursework": []
+  }],
+  "projects": [{
+    "name": "",
+    "description": "",
+    "technologies": [],
+    "achievements": []
+  }],
+  "certifications": [{
+    "name": "",
+    "issuer": "",
+    "date": "",
+    "expiry": ""
+  }],
+  "summary": "",
+  "keywords": []
+}
+
+Rules:
+- Extract only information that exists in the resume
+- Use empty strings/arrays for missing information
+- Ensure all JSON is valid and properly formatted
+- Calculate total_years based on work experience
+- Include all relevant skills, technologies, and keywords`;
+
+    const response = await groqClient.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1, // Low temperature for consistent extraction
+      max_tokens: 3000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("No response from GROQ API");
+    }
+
+    // Clean the response and parse JSON
+    const cleanedContent = content.replace(/```json|```/g, '').trim();
+    const candidateProfile = JSON.parse(cleanedContent) as CandidateProfile;
     
-    reader.onload = (e) => {
-      // This is a simplified version - in production use proper PDF/Word parsing
-      const text = e.target?.result as string;
-      
-      // Return sample text for demo
-      const sampleText = `
-John Doe
-Software Engineer
-Email: john.doe@example.com | Phone: (555) 123-4567
-Location: San Francisco, CA
-
-PROFESSIONAL SUMMARY
-Experienced React developer with 5+ years of building scalable web applications.
-
-EXPERIENCE
-Senior Frontend Developer
-Tech Company • 2020 - Present
-- Developed and maintained enterprise web applications
-- Led frontend development team
-- Implemented modern React architecture
-
-SKILLS
-React, TypeScript, Node.js, TailwindCSS, Git, JavaScript, HTML, CSS
-
-EDUCATION
-Bachelor of Science in Computer Science
-University Name • 2016 - 2020
-
-PROJECTS
-E-commerce Platform - Built full-stack application
-Data Analytics Dashboard - Created interactive visualizations
-Mobile App Development - Developed cross-platform mobile app
-      `;
-      
-      resolve(sampleText);
+    return candidateProfile;
+  } catch (error) {
+    console.error("Error extracting candidate profile:", error);
+    
+    // Return a fallback structure if parsing fails
+    return {
+      personal_info: {
+        name: "Unable to extract",
+        email: "",
+        phone: "",
+        location: ""
+      },
+      skills: {
+        technical_skills: [],
+        soft_skills: [],
+        languages: [],
+        tools_and_frameworks: []
+      },
+      experience: {
+        total_years: 0,
+        work_history: []
+      },
+      education: [],
+      projects: [],
+      certifications: [],
+      summary: "Unable to extract summary from resume",
+      keywords: []
     };
+  }
+}
+
+/**
+ * Extract structured data from job description text using GROQ AI
+ * @param jobText - The job description text
+ * @returns Promise<JobRequirements>
+ */
+export async function extractJobRequirements(jobText: string): Promise<JobRequirements> {
+  try {
+    const prompt = `You are an expert job description parser. Extract structured information from the following job posting and return it in JSON format.
+
+Job Description:
+${jobText}
+
+Please extract and return ONLY valid JSON in the following structure (no additional text or explanation):
+{
+  "job_info": {
+    "title": "",
+    "company": "",
+    "location": "",
+    "job_type": "",
+    "salary_range": ""
+  },
+  "requirements": {
+    "required_skills": [],
+    "preferred_skills": [],
+    "min_experience": 0,
+    "max_experience": 0,
+    "education_level": "",
+    "certifications": []
+  },
+  "responsibilities": [],
+  "benefits": [],
+  "keywords": [],
+  "description_summary": ""
+}
+
+Rules:
+- Extract only information that exists in the job description
+- Use empty strings/arrays for missing information
+- Ensure all JSON is valid and properly formatted
+- Separate required vs preferred skills
+- Extract experience requirements in years
+- Include all relevant keywords for matching`;
+
+    const response = await groqClient.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1,
+      max_tokens: 2500,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("No response from GROQ API");
+    }
+
+    const cleanedContent = content.replace(/```json|```/g, '').trim();
+    const jobRequirements = JSON.parse(cleanedContent) as JobRequirements;
     
-    reader.readAsText(file);
-  });
+    return jobRequirements;
+  } catch (error) {
+    console.error("Error extracting job requirements:", error);
+    
+    return {
+      job_info: {
+        title: "Unable to extract",
+        company: "",
+        location: "",
+        job_type: "",
+        salary_range: ""
+      },
+      requirements: {
+        required_skills: [],
+        preferred_skills: [],
+        min_experience: 0,
+        education_level: "",
+        certifications: []
+      },
+      responsibilities: [],
+      benefits: [],
+      keywords: [],
+      description_summary: "Unable to extract job description summary"
+    };
+  }
+}
+
+/**
+ * Match candidate profile with job requirements
+ * @param candidate - Candidate profile data
+ * @param job - Job requirements data
+ * @returns Promise<MatchResult>
+ */
+export async function matchCandidateToJob(
+  candidate: CandidateProfile, 
+  job: JobRequirements
+): Promise<MatchResult> {
+  try {
+    const prompt = `You are an expert HR matching system. Analyze the candidate profile and job requirements to provide a detailed matching score and recommendations.
+
+Candidate Profile:
+${JSON.stringify(candidate, null, 2)}
+
+Job Requirements:
+${JSON.stringify(job, null, 2)}
+
+Please analyze and return ONLY valid JSON in the following structure:
+{
+  "overall_score": 0,
+  "skill_match": {
+    "score": 0,
+    "matched_skills": [],
+    "missing_skills": []
+  },
+  "experience_match": {
+    "score": 0,
+    "candidate_years": 0,
+    "required_years": 0,
+    "meets_requirement": false
+  },
+  "education_match": {
+    "score": 0,
+    "meets_requirement": false
+  },
+  "recommendations": {
+    "for_candidate": [],
+    "for_recruiter": []
+  }
+}
+
+Scoring Guidelines:
+- overall_score: 0-100 based on all factors
+- skill_match score: 0-100 based on skill alignment
+- experience_match score: 0-100 based on years of experience
+- education_match score: 0-100 based on education level
+- Provide specific, actionable recommendations for both parties`;
+
+    const response = await groqClient.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1,
+      max_tokens: 2000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("No response from GROQ API");
+    }
+
+    const cleanedContent = content.replace(/```json|```/g, '').trim();
+    const matchResult = JSON.parse(cleanedContent) as MatchResult;
+    
+    return matchResult;
+  } catch (error) {
+    console.error("Error matching candidate to job:", error);
+    
+    return {
+      overall_score: 0,
+      skill_match: {
+        score: 0,
+        matched_skills: [],
+        missing_skills: []
+      },
+      experience_match: {
+        score: 0,
+        candidate_years: candidate.experience.total_years,
+        required_years: job.requirements.min_experience,
+        meets_requirement: false
+      },
+      education_match: {
+        score: 0,
+        meets_requirement: false
+      },
+      recommendations: {
+        for_candidate: ["Unable to generate recommendations due to processing error"],
+        for_recruiter: ["Unable to generate recommendations due to processing error"]
+      }
+    };
+  }
 }
 
 /**

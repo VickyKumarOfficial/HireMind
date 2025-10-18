@@ -1,4 +1,4 @@
-import { Brain, Home, Briefcase, User, FileText, LogOut } from "lucide-react";
+import { Brain, Home, Briefcase, User, FileText, LogOut, Target } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Footer from "@/components/Footer";
@@ -49,6 +49,14 @@ const CandidateLayout = ({ children }: CandidateLayoutProps) => {
                   <Button variant={isActive ? "secondary" : "ghost"} size="sm">
                     <User className="h-4 w-4 mr-2" />
                     Profile
+                  </Button>
+                )}
+              </NavLink>
+              <NavLink to="/candidate/profile-matching">
+                {({ isActive }) => (
+                  <Button variant={isActive ? "secondary" : "ghost"} size="sm">
+                    <Target className="h-4 w-4 mr-2" />
+                    AI Matching
                   </Button>
                 )}
               </NavLink>
