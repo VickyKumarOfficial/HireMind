@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Brain } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { HRAuthService, AuthService } from "@/lib/auth";
 
 const HRLogin = () => {
   const navigate = useNavigate();
@@ -14,8 +15,23 @@ const HRLogin = () => {
   const [companyId, setCompanyId] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const [departmentCode, setDepartmentCode] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Check if user is already logged in
+    const checkAuth = async () => {
+      const { session } = await AuthService.getSession();
+      if (session) {
+        const role = await AuthService.getUserRole(session.user.id);
+        if (role === 'hr_user') {
+          navigate("/hr/dashboard");
+        }
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate all fields are filled
@@ -58,19 +74,28 @@ const HRLogin = () => {
       return;
     }
 
-    // If all validations pass
-    toast.success("Login successful! Welcome to HR Portal");
-    
-    // Store HR credentials (in a real app, this would be validated against a backend)
-    sessionStorage.setItem("hrAuth", JSON.stringify({
-      email,
-      companyId,
-      employeeId,
-      departmentCode,
-      loginTime: new Date().toISOString()
-    }));
-    
-    navigate("/hr/dashboard");
+    setLoading(true);
+    try {
+      const { error } = await HRAuthService.signIn({
+        email,
+        password,
+        company_id: companyId,
+        employee_id: employeeId,
+        department_code: departmentCode,
+      });
+
+      if (error) {
+        toast.error(error.message || "Login failed. Please check your credentials.");
+        return;
+      }
+
+      toast.success("Login successful! Welcome to HR Portal");
+      navigate("/hr/dashboard");
+    } catch (error: any) {
+      toast.error(error.message || "An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -156,8 +181,8 @@ const HRLogin = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full mt-6">
-              Sign In Securely
+            <Button type="submit" className="w-full mt-6" disabled={loading}>
+              {loading ? "Signing In..." : "Sign In Securely"}
             </Button>
           </form>
 

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { AuthService, HRAuthService } from "@/lib/auth";
+import { AuthService, CandidateAuthService } from "@/lib/auth";
 import { Session } from "@supabase/supabase-js";
 
-export const useHRAuth = () => {
+export const useCandidateAuth = () => {
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -17,18 +17,18 @@ export const useHRAuth = () => {
         const { session: currentSession } = await AuthService.getSession();
         
         if (!currentSession) {
-          toast.error("Unauthorized access. Please login with valid HR credentials.");
-          navigate("/hr/login");
+          toast.error("Please login to access this page.");
+          navigate("/candidate/login");
           return;
         }
 
-        // Verify user has HR role
-        const hasHRRole = await AuthService.hasRole(currentSession.user.id, 'hr_user');
+        // Verify user has candidate role
+        const hasCandidateRole = await AuthService.hasRole(currentSession.user.id, 'candidate');
         
-        if (!hasHRRole) {
-          toast.error("Access denied. This portal is for HR personnel only.");
+        if (!hasCandidateRole) {
+          toast.error("Access denied. This portal is for candidates only.");
           await AuthService.signOut();
-          navigate("/hr/login");
+          navigate("/candidate/login");
           return;
         }
 
@@ -37,7 +37,7 @@ export const useHRAuth = () => {
         }
       } catch (error) {
         toast.error("Authentication error. Please login again.");
-        navigate("/hr/login");
+        navigate("/candidate/login");
       } finally {
         if (mounted) {
           setLoading(false);
@@ -50,15 +50,15 @@ export const useHRAuth = () => {
     // Set up auth state listener
     const { data: { subscription } } = AuthService.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
-        navigate("/hr/login");
+        navigate("/candidate/login");
       } else if (session && mounted) {
         // Defer role check to avoid blocking the callback
         setTimeout(async () => {
-          const hasHRRole = await AuthService.hasRole(session.user.id, 'hr_user');
-          if (!hasHRRole) {
-            toast.error("Access denied. This portal is for HR personnel only.");
+          const hasCandidateRole = await AuthService.hasRole(session.user.id, 'candidate');
+          if (!hasCandidateRole) {
+            toast.error("Access denied. This portal is for candidates only.");
             await AuthService.signOut();
-            navigate("/hr/login");
+            navigate("/candidate/login");
           } else {
             setSession(session);
           }
@@ -72,10 +72,10 @@ export const useHRAuth = () => {
     };
   }, [navigate]);
 
-  const getHRProfile = async () => {
+  const getCandidateProfile = async () => {
     if (!session) return null;
     try {
-      const { data } = await HRAuthService.getHRProfile(session.user.id);
+      const { data } = await CandidateAuthService.getCandidateProfile(session.user.id);
       return data;
     } catch {
       return null;
@@ -85,8 +85,8 @@ export const useHRAuth = () => {
   const logout = async () => {
     await AuthService.signOut();
     toast.success("Logged out successfully");
-    navigate("/hr/login");
+    navigate("/candidate/login");
   };
 
-  return { session, loading, getHRProfile, logout };
+  return { session, loading, getCandidateProfile, logout };
 };

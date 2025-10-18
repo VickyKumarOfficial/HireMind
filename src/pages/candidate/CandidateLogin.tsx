@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Brain } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CandidateAuthService, AuthService } from "@/lib/auth";
 
 const CandidateLogin = () => {
   const navigate = useNavigate();
@@ -16,24 +17,85 @@ const CandidateLogin = () => {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Check if user is already logged in
+    const checkAuth = async () => {
+      const { session } = await AuthService.getSession();
+      if (session) {
+        const role = await AuthService.getUserRole(session.user.id);
+        if (role === 'candidate') {
+          navigate("/candidate/dashboard");
+        }
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
+    
+    if (!email || !password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await CandidateAuthService.signIn({ email, password });
+      
+      if (error) {
+        toast.error(error.message || "Login failed. Please check your credentials.");
+        return;
+      }
+
       toast.success("Login successful!");
       navigate("/candidate/dashboard");
-    } else {
-      toast.error("Please fill in all fields");
+    } catch (error: any) {
+      toast.error(error.message || "An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name && signupEmail && signupPassword) {
-      toast.success("Account created successfully!");
+    
+    if (!name || !signupEmail || !signupPassword) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (signupPassword.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await CandidateAuthService.signUp({
+        email: signupEmail,
+        password: signupPassword,
+        full_name: name,
+        phone: phone || undefined,
+      });
+
+      if (error) {
+        if (error.message?.includes("already registered")) {
+          toast.error("This email is already registered. Please login instead.");
+        } else {
+          toast.error(error.message || "Signup failed. Please try again.");
+        }
+        return;
+      }
+
+      toast.success("Account created successfully! Please check your email to verify your account.");
       navigate("/candidate/dashboard");
-    } else {
-      toast.error("Please fill in all fields");
+    } catch (error: any) {
+      toast.error(error.message || "An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,8 +140,8 @@ const CandidateLogin = () => {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
-                <Button type="submit" className="w-full">
-                  Sign In
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Signing In..." : "Sign In"}
                 </Button>
               </form>
             </TabsContent>
@@ -126,8 +188,8 @@ const CandidateLogin = () => {
                     onChange={(e) => setSignupPassword(e.target.value)}
                   />
                 </div>
-                <Button type="submit" className="w-full">
-                  Create Account
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Creating Account..." : "Create Account"}
                 </Button>
               </form>
             </TabsContent>
